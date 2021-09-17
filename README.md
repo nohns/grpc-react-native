@@ -1,3 +1,5 @@
+## Notice: This library in early development. Please wait before you use it :)
+
 # React Native gRPC
 
 ## A truely native gRPC implementation for React Native
@@ -8,7 +10,7 @@ Leverage the performance of the native gRPC libraries in your React Native app.
 
 If you wanted to use gRPC in a React Native app you would need to use either [grpc-web](https://github.com/grpc/grpc-web) with a proxy infront or make a custom native implemtation of the gRPC libraries for iOS and Android, which can be cumbersome at best.
 
-Now you can utilize the power of the native libraries right in your javascript, powered by `protc` code generation.
+Now you can utilize the power of the native libraries right in your javascript, powered by `protoc` code generation.
 
 ### How it works
 
