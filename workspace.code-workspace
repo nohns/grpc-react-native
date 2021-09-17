@@ -1,0 +1,20 @@
+{
+    "folders": [
+        {
+            "name": "proto-gen-rn",
+            "path": "."
+        },
+        {
+            "name": "java",
+            "path": "plugins/java"
+        },
+        {
+            "name": "js",
+            "path": "plugins/js"
+        },
+        {
+            "name": "swift",
+            "path": "plugins/swift"
+        }
+    ]
+}
