@@ -51,7 +51,7 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
-To edit the Objective-C files, open `example/ios/GrpcExample.xcworkspace` in XCode and find the source files at `Pods > Development Pods > react-native-grpc`.
+To edit the Objective-C files, open `example/ios/Example.xcworkspace` in XCode and find the source files at `Pods > Development Pods > grpc-react-native`.
 
 To edit the Kotlin files, open `example/android` in Android studio and find the source files at `reactnativegrpc` under `Android`.
 
