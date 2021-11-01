@@ -13,7 +13,7 @@
     "android",
     "ios",
     "cpp",
-    "react-native-grpc.podspec",
+    "grpc-react-native.podspec",
     "!lib/typescript/example",
     "!android/build",
     "!ios/build",
