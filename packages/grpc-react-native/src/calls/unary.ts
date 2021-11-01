@@ -1,4 +1,4 @@
-import { translateError } from '../calls';
+import { translateError } from '.';
 
 export async function makeUnaryCall(
   clientHandle: number,
