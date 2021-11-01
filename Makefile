@@ -1,11 +1,17 @@
 plugins:
-	make plugin-swift && make plugin-java && make plugin--js
+	${MAKE} plugin-swift
+	${MAKE} plugin-java
+	${MAKE} plugin-js
 
 plugin-swift:
-	cd ./plugins/swift && go build -o ../../bin/protoc-gen-rn-grpc-swift 
+	@${MAKE} plugin NAME=swift
 
 plugin-java:
-	cd ./plugins/java && go build -o ../../bin/protoc-gen-rn-grpc-java 
+	@${MAKE} plugin NAME=java
 
 plugin-js:
-	cd ./plugins/js && go build -o ../../bin/protoc-gen-rn-grpc-js 
+	@${MAKE} plugin NAME=js
+
+plugin: 
+	@cd ./plugins/${NAME} && go build -o ../../bin/protoc-gen-rn-grpc-${NAME}
+	@echo "Finshed building protoc-gen-rn-grpc-${NAME}"

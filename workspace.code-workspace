@@ -1,19 +1,23 @@
 {
     "folders": [
         {
-            "name": "proto-gen-rn",
+            "name": "root",
             "path": "."
         },
         {
-            "name": "java",
+            "name": "lib/generator",
+            "path": "lib/generator"
+        },
+        {
+            "name": "plugin/java",
             "path": "plugins/java"
         },
         {
-            "name": "js",
+            "name": "plugin/js",
             "path": "plugins/js"
         },
         {
-            "name": "swift",
+            "name": "plugin/swift",
             "path": "plugins/swift"
         }
     ]

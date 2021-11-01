@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package example;
+
+option go_package = "github.com/poly-auth/grpc-react-native";
+
+
+
+message Hello {
+  string greeting = 1;
+}
