@@ -2,10 +2,16 @@ syntax = "proto3";
 
 package example;
 
-option go_package = "github.com/poly-auth/grpc-react-native";
+option go_package = "github.com/nohns/grpc-react-native";
 
+service Greeter {
+  rpc SayHello(SayHelloRequest) returns (SayHelloResponse); // Unary example
+}
 
+message SayHelloRequest {
+  string name = 1;
+}
 
-message Hello {
+message SayHelloResponse {
   string greeting = 1;
 }

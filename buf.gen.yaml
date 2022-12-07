@@ -1,0 +1,6 @@
+version: v1beta1
+plugins:
+  - name: grpc-rn
+    path: ./bin/protoc-gen-grpc-rn
+    out: ./packages/grpc-react-native/example/pb
+    opt: types=true
