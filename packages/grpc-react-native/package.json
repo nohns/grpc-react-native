@@ -1,6 +1,6 @@
 {
   "name": "grpc-react-native",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A truely native gRPC implementation for React Native",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
