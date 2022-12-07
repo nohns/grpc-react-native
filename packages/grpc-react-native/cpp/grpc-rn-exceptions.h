@@ -22,6 +22,7 @@ public:
     }
 };
 
+
 class ChannelConnectionFailedException : public GenericException
 {
 public:

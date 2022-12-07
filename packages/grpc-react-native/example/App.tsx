@@ -19,11 +19,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {ChannelCredentials} from '../lib/typescript';
 
 import {
   GetProductFromBarcodeRequest,
   GetProductFromBarcodeResponse,
 } from './jspb/stylekorean_pb';
+import {GreeterClient} from './pb/protos/example.grpcrn';
 
 declare const GrpcReactNative: {
   createInsecureChannel(addr: string): number;
@@ -34,6 +36,9 @@ declare const GrpcReactNative: {
     request: ArrayBuffer,
   ): Promise<ArrayBuffer>;
 };
+
+const c = new GreeterClient('target', ChannelCredentials.createInsecure());
+c.SayHello({});
 
 class Channel {
   constructor(public readonly handle: number) {}

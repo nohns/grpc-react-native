@@ -15,6 +15,8 @@
 #include <jsi/jsi.h>
 #include "thread-pool.h"
 
+#include "js/lib/PromiseFactory.h"
+
 
 #include <ReactCommon/CallInvoker.h>
 
@@ -37,9 +39,7 @@ public:
     std::vector<jsi::PropNameID> getPropertyNames(jsi::Runtime &rt) override;
     
 private:
-    jsi::Runtime& runtime_;
-    std::shared_ptr<react::CallInvoker> jsCallInvoker_;
-    ThreadPool threadPool_;
+    std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory_;
     
     facebook::jsi::Value jsiGrpcRNMakeUnaryCall(facebook::jsi::Runtime& runtime, long clientHandle, std::string& methodName, uint8_t* reqBuf, size_t& reqBufSize);
 };
