@@ -11,20 +11,23 @@
 
 using namespace facebook;
 
-namespace GrpcRN {
+namespace GrpcRN
+{
 
-GrpcRNModule::GrpcRNModule(jsi::Runtime& runtime, std::shared_ptr<react::CallInvoker> jsCallInvoker): runtime_(runtime), jsCallInvoker_(jsCallInvoker), threadPool_(2) {}
+    GrpcRNModule::GrpcRNModule(jsi::Runtime &runtime, std::shared_ptr<react::CallInvoker> jsCallInvoker) : runtime_(runtime), jsCallInvoker_(jsCallInvoker), threadPool_(2) {}
 
-jsi::Value GrpcRNModule::get(jsi::Runtime& runtime, const jsi::PropNameID& propName) {
-    auto name = propName.utf8(runtime);
-    
-    if (name == "createInsecureChannel") {
-        return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "createInsecureChannel"), 1, [](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
+    jsi::Value GrpcRNModule::get(jsi::Runtime &runtime, const jsi::PropNameID &propName)
+    {
+        auto name = propName.utf8(runtime);
+
+        if (name == "createInsecureChannel")
+        {
+            return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "createInsecureChannel"), 1, [](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments, size_t count) -> jsi::Value
+                                                         {
             
             // Make sure we do have one argument
             if (count != 1 || !arguments[0].isString()) {
-                jsi::detail::throwJSError(runtime, "Expected 1 argument of type string");
-                return jsi::Value::undefined();
+                throw jsi::JSError(runtime, "Expected 1 argument of type string");
             }
             
             // Get the gRPC address like HOST:PORT
@@ -33,42 +36,42 @@ jsi::Value GrpcRNModule::get(jsi::Runtime& runtime, const jsi::PropNameID& propN
             long channelHandle = GrpcRN::Manager::instance()->createInsecureChannel(address);
             
             // Return channel handle
-            return jsi::Value((int)channelHandle);
-        });
-    }
-    
-    if (name == "createClient") {
-        return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "createClient"), 1, [](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
+            return jsi::Value((int)channelHandle); });
+        }
+
+        if (name == "createClient")
+        {
+            return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "createClient"), 1, [](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments, size_t count) -> jsi::Value
+                                                         {
             
             // Make sure we do have one argument
             if (count != 1 || !arguments[0].isNumber()) {
-                jsi::detail::throwJSError(runtime, "Expected 1 argument of type number");
-                return jsi::Value();
+                throw jsi::JSError(runtime, "Expected 1 argument of type number");
             }
             
             // Make sure we have a possible integer
             double channelHandleDouble = arguments[0].asNumber();
             long channelHandle = std::lround(channelHandleDouble);
             if (channelHandle < 0) {
-                jsi::detail::throwJSError(runtime, "Expected first argument to be an unsigned integer");
-                return jsi::Value::undefined();
+                throw jsi::JSError(runtime, "Expected first argument to be an unsigned integer");
             }
             
             // Create client
             long clientHandle = GrpcRN::Manager::instance()->createClient( channelHandle);
             
             // Return client handle
-            return jsi::Value((int)clientHandle);
-        });;
-    }
-    
-    if (name == "makeUnaryCall") {
-        return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "makeUnaryCall"), 3, [this](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* arguments, size_t count) -> jsi::Value {
+            return jsi::Value((int)clientHandle); });
+            ;
+        }
+
+        if (name == "makeUnaryCall")
+        {
+            return jsi::Function::createFromHostFunction(runtime_, jsi::PropNameID::forAscii(runtime_, "makeUnaryCall"), 3, [this](jsi::Runtime &runtime, const jsi::Value &thisValue, const jsi::Value *arguments, size_t count) -> jsi::Value
+                                                         {
             
             // Make sure we do have 3 arguments of the right types
             if (count != 3 || !arguments[0].isNumber() || !arguments[1].isString() || !arguments[2].isObject() || !arguments[2].asObject(runtime).isArrayBuffer(runtime)) {
-                jsi::detail::throwJSError(runtime, "Expected 3 arguments of type number, string and ArrayBuffer");
-                return jsi::Value::undefined();
+                throw jsi::JSError(runtime, "Expected 3 arguments of type number, string and ArrayBuffer");
             }
             
             // Get client handle
@@ -76,8 +79,7 @@ jsi::Value GrpcRNModule::get(jsi::Runtime& runtime, const jsi::PropNameID& propN
             double clientHandleDouble = arguments[0].asNumber();
             long clientHandle = std::lround(clientHandleDouble);
             if (clientHandle < 0) {
-                jsi::detail::throwJSError(runtime, "Expected first argument to be an unsigned integer");
-                return jsi::Value::undefined();
+                throw jsi::JSError(runtime, "Expected first argument to be an unsigned integer");
             }
             
             // Get method name
@@ -88,56 +90,53 @@ jsi::Value GrpcRNModule::get(jsi::Runtime& runtime, const jsi::PropNameID& propN
             uint8_t* buf = arrayBuf.data(runtime);
             size_t bufSize = arrayBuf.size(runtime);
             
-            return this->jsiGrpcRNMakeUnaryCall(runtime, clientHandle, methodName, buf, bufSize);
-        });
-    }
-    
-    return jsi::Value::undefined();
-}
-
-std::vector<jsi::PropNameID> GrpcRNModule::getPropertyNames(jsi::Runtime &runtime) {
-    std::vector<jsi::PropNameID> result;
-    result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("createInsecureChannel")));
-    result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("createClient")));
-    result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("makeUnaryCall")));
-    return result;
-}
-
-void GrpcRNModule::install(jsi::Runtime& runtime, std::shared_ptr<react::CallInvoker> jsCallInvoker) {
-    
-    auto jsiModule = std::make_shared<GrpcRNModule>(runtime, std::move(jsCallInvoker));
-    auto object = jsi::Object::createFromHostObject(runtime, jsiModule);
-    runtime.global().setProperty(runtime, "GrpcReactNative", std::move(object));
-}
-
-
-
-jsi::Value GrpcRNModule::jsiGrpcRNMakeUnaryCall(jsi::Runtime& runtime, long clientHandle, std::string& methodName, uint8_t* reqBuf, size_t& reqBufSize) {
-    
-    
-    // Define promise actions
-    auto promiseCallback = [this, &clientHandle, &methodName, reqBuf, &reqBufSize](jsi::Runtime& runtime, const jsi::Value&, const jsi::Value* arguments, size_t count) -> jsi::Value {
-        
-        // Make sure the promise callback is in the right format
-        if (count != 2) {
-            throw std::runtime_error("Promise Callback called with an unexpected amount of arguments!");
+            return this->jsiGrpcRNMakeUnaryCall(runtime, clientHandle, methodName, buf, bufSize); });
         }
-        auto resolver = std::make_shared<jsi::Function>(arguments[0].asObject(runtime).asFunction(runtime));
-        auto rejecter = std::make_shared<jsi::Function>(arguments[1].asObject(runtime).asFunction(runtime));
-        
-        threadPool_.enqueue([this, &runtime, clientHandle, methodName, &reqBuf, reqBufSize, resolver, rejecter]() {
+
+        return jsi::Value::undefined();
+    }
+
+    std::vector<jsi::PropNameID> GrpcRNModule::getPropertyNames(jsi::Runtime &runtime)
+    {
+        std::vector<jsi::PropNameID> result;
+        result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("createInsecureChannel")));
+        result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("createClient")));
+        result.push_back(jsi::PropNameID::forUtf8(runtime, std::string("makeUnaryCall")));
+        return result;
+    }
+
+    void GrpcRNModule::install(jsi::Runtime &runtime, std::shared_ptr<react::CallInvoker> jsCallInvoker)
+    {
+
+        auto jsiModule = std::make_shared<GrpcRNModule>(runtime, std::move(jsCallInvoker));
+        auto object = jsi::Object::createFromHostObject(runtime, jsiModule);
+        runtime.global().setProperty(runtime, "GrpcReactNative", std::move(object));
+    }
+
+    jsi::Value GrpcRNModule::jsiGrpcRNMakeUnaryCall(jsi::Runtime &runtime, long clientHandle, std::string &methodName, uint8_t *reqBuf, size_t &reqBufSize)
+    {
+
+        // Define promise actions
+        auto promiseCallback = [this, &clientHandle, &methodName, reqBuf, &reqBufSize](jsi::Runtime &runtime, const jsi::Value &, const jsi::Value *arguments, size_t count) -> jsi::Value
+        {
+            // Make sure the promise callback is in the right format
+            if (count != 2)
+            {
+                throw std::runtime_error("Promise Callback called with an unexpected amount of arguments!");
+            }
+            auto resolver = std::make_shared<jsi::Function>(arguments[0].asObject(runtime).asFunction(runtime));
+            auto rejecter = std::make_shared<jsi::Function>(arguments[1].asObject(runtime).asFunction(runtime));
+
+            threadPool_.enqueue([this, &runtime, clientHandle, methodName, &reqBuf, reqBufSize, resolver, rejecter]()
+                                {
             
             try {
-                // Prepare response buffer
-                uint8_t* resBuf;
-                size_t resBufSize = 0;
-                
                 // Find client
                 auto client = GrpcRN::Manager::instance()->getClient(clientHandle);
                 
                 // Make unary call
                 grpc::Status status;
-                client->unaryCall(status, methodName, reqBuf, reqBufSize, &resBuf, &resBufSize);
+                grpc::Slice unaryRes = client->unaryCall(status, methodName, reqBuf, reqBufSize);
                 
                 // If an error was returned by the gRPC method then reject promise with js error
                 if (!status.ok()) {
@@ -155,13 +154,12 @@ jsi::Value GrpcRNModule::jsiGrpcRNMakeUnaryCall(jsi::Runtime& runtime, long clie
                 }
                 
                 // Make sure that we notify the js thread when we invoke the promise resolve callback
-                this->jsCallInvoker_->invokeAsync([&runtime, resolver, resBuf, resBufSize]() {
+                this->jsCallInvoker_->invokeAsync([&runtime, resolver, unaryRes]() {
                     
-                    jsi::Object resArrayBufObject = GrpcRN::Utils::copyBufferToJsiArrayBuffer(runtime, resBuf, resBufSize);
+                    jsi::Object resArrayBufObject = GrpcRN::Utils::copyBufferToJsiArrayBuffer(runtime, unaryRes.begin(), unaryRes.size());
                     
                     // Resolve promise
                     auto responseObjValue = jsi::Value(std::move(resArrayBufObject));
-                    resolver->call(runtime, responseObjValue, 1);
                 });
                 
             } catch (GrpcRN::Exception::GenericException& exp) {
@@ -194,19 +192,17 @@ jsi::Value GrpcRNModule::jsiGrpcRNMakeUnaryCall(jsi::Runtime& runtime, long clie
                     std::cout << "Unknown gRPC error occured" << std::endl;
                     rejecter->call(runtime, error.value(), 1);
                 });
-            }
-        });
-        
-        return jsi::Value::undefined();
-    };
-    
-    // Create promise from callback
-    auto promiseCtor = runtime.global().getPropertyAsFunction(runtime, "Promise");
-    auto promise = jsi::Value(promiseCtor.callAsConstructor(runtime, jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, "PromiseCallback"), 2, std::move(promiseCallback))).asObject(runtime));
-    
-    // Return response
-    return promise;
-    
-}
+            } });
+
+            return jsi::Value::undefined();
+        };
+
+        // Create promise from callback
+        auto promiseCtor = runtime.global().getPropertyAsFunction(runtime, "Promise");
+        auto promise = jsi::Value(promiseCtor.callAsConstructor(runtime, jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, "PromiseCallback"), 2, std::move(promiseCallback))).asObject(runtime));
+
+        // Return response
+        return promise;
+    }
 
 }
