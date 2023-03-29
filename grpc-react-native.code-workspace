@@ -8,5 +8,11 @@
             "name": "",
             "path": "plugins/js"
         },
-    ]
+    ],
+    "settings": {
+        "files.associations": {
+            "*.inc": "cpp",
+            "filesystem": "cpp"
+        }
+    }
 }
