@@ -17,6 +17,9 @@ namespace utils {
 class Strings {
 public:
     static void split(std::string& subject, const char delimiter, std::vector<std::string> &out);
+    
+    template<typename ... Args>
+    static std::string format( const std::string& format, Args ... args);
 };
 
 }
