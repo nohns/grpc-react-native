@@ -60,6 +60,7 @@ private:
     
     // Pool of protobuf descriptors used by the service which the client is consuming
     google::protobuf::DescriptorPool descPool_;
+    const FileDescriptor* fileDescriptor_;
     std::map<string, google::protobuf::Message*> reqProtos_;
     std::map<string, google::protobuf::Message*> resProtos_;
     

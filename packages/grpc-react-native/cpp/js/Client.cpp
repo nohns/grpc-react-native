@@ -52,7 +52,7 @@ Client::Client(std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory, 
         // Add descriptors to pool from the proto file, in which the service methods for this client is declared
         FileDescriptorProto fdp;
         fdp.ParseFromArray(fdpBuf, (int)fdpBufSize);
-        descPool_.BuildFile(fdp);
+        fileDescriptor_ = descPool_.BuildFile(fdp);
     }
     
     // Setup channel to use for this communication
@@ -133,16 +133,18 @@ jsi::Value Client::makeUnary(jsi::Runtime& runtime, std::string methodPath, jsi:
     std::string methodName = serviceMethodSplit[1];
     
     // Find in and out descriptors for method
-    auto servDesc = descPool_.FindServiceByName(serviceName);
+    auto servDesc = fileDescriptor_->FindServiceByName(serviceName);
     auto methodDesc = servDesc->FindMethodByName(methodName);
     auto inMsgDesc = methodDesc->input_type();
     auto outMsgDesc = methodDesc->output_type();
+    auto subMsg = descPool_.FindMessageTypeByName("");
     
     // Create an empty Message object that will hold the result of deserializing
     // a byte array for the proto definition:
     google::protobuf::DynamicMessageFactory factory;
     const google::protobuf::Message* prototypeInMsg = factory.GetPrototype(inMsgDesc); // prototype_msg is immutable
     const google::protobuf::Message* prototypeOutMsg = factory.GetPrototype(outMsgDesc); // prototype_msg is immutable
+    const google::protobuf::Message* prototypeSubMsg =
     if (prototypeInMsg == NULL || prototypeOutMsg == NULL) {
         // @TODO: Handle error
         std::cerr << "Cannot create prototype message from message descriptor";
@@ -226,8 +228,8 @@ jsi::Value Client::makeUnary(jsi::Runtime& runtime, std::string methodPath, jsi:
     }
     
     // Parse reply proto into jsi host object message format
-    std::shared_ptr<grpcrn::js::pb::Message> msgHo = std::make_shared<grpcrn::js::pb::Message>();
-    msgHo->parseFromProto(reply);
+    std::shared_ptr<grpcrn::js::pb::Message> msgHo;
+    msgHo->parseFromProto(runtime, *reply);
     
     // Return js object value
     jsi::Object::createFromHostObject(runtime, msgHo);
