@@ -18,7 +18,7 @@ public:
     // Client constructor
     Client(std::shared_ptr<grpc::ChannelInterface> channel);
     
-    void unaryCall(grpc::Status& status, std::string method_name, uint8_t* msg_buf, size_t msg_buf_size, uint8_t** res_msg_buf, size_t* res_msg_buf_size);
+    grpc::Slice unaryCall(grpc::Status& status, std::string method_name, uint8_t* msg_buf, size_t msg_buf_size);
     
     void serverStreamingCall(std::string &method_name, uint8_t *msg_buf, size_t msg_buf_size, uint8_t *res_msg_buf, size_t *res_msg_buf_size);
     

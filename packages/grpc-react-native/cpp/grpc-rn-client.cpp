@@ -18,7 +18,7 @@ Client::Client(std::shared_ptr<grpc::ChannelInterface> channel) {
     channel_ = channel;
 }
 
-void Client::unaryCall(grpc::Status& status, std::string method_name, uint8_t *msg_buf, size_t msg_buf_size, uint8_t** res_msg_buf, size_t *res_msg_buf_size) {
+grpc::Slice Client::unaryCall(grpc::Status& status, std::string method_name, uint8_t *msg_buf, size_t msg_buf_size) {
     
     void* got_tag;
     bool ok;
@@ -86,11 +86,12 @@ void Client::unaryCall(grpc::Status& status, std::string method_name, uint8_t *m
     
     // Copy buffer into slice
     grpc::Slice slice;
-    recv_buffer.DumpToSingleSlice(&slice);
+    auto dumpStatus = recv_buffer.TrySingleSlice(&slice);
+    if (!dumpStatus.ok()) {
+        recv_buffer.DumpToSingleSlice(&slice);
+    }
     
-    // Change response pointer to slice start and size to the slice size
-    *res_msg_buf_size = slice.size();
-    *res_msg_buf = (uint8_t*)slice.begin();
+    return slice;
 }
 
 void Client::serverStreamingCall(std::string &method_name, uint8_t *msg_buf, size_t msg_buf_size, uint8_t *res_msg_buf, size_t *res_msg_buf_size) {}

@@ -1,23 +1,15 @@
-import type { ChannelCredentials } from './channel-credentials';
-import { GRPCRN } from './native-binding';
-
-export interface ClientStub {
-  makeUnaryCall<TReq, TRes>(method: string, data: TReq): Promise<TRes>;
-}
+import { makeUnaryCall } from './calls/unary';
+import type { Channel } from './channel';
 
 export abstract class Client {
-  // @ts-expect-error
-  private readonly client: ClientStub;
+  private readonly handle: number;
 
-  constructor(
-    target: string,
-    channelCredentials: ChannelCredentials,
-    protoDefinitions?: ArrayBuffer
-  ) {
-    this.client = GRPCRN.createClient(
-      target,
-      channelCredentials.getStub(),
-      protoDefinitions
-    );
+  constructor(channel: Channel) {
+    this.handle = GrpcReactNative.createClient(channel.handle);
+  }
+
+  // Makes a unary call to the specified method with this client
+  protected _makeUnaryCall(methodName: string, request: Uint8Array) {
+    return makeUnaryCall(this.handle, methodName, request);
   }
 }
