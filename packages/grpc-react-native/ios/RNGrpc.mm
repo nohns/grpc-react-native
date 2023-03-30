@@ -10,7 +10,7 @@
 #import <React/RCTUtils.h>
 #import <jsi/jsi.h>
 #import <stdio.h>
-#import "grpc-rn-module.h"
+#import "GRPCRTNModule.h"
 
 @interface RCTBridge (ext)
 - (std::shared_ptr<facebook::react::CallInvoker>)jsCallInvoker;
@@ -67,7 +67,7 @@ RCT_EXPORT_MODULE()
     }
     
     // Install grpc-react-native c++ module
-    GrpcRN::GrpcRNModule::install(*(jsi::Runtime *)cxxBridge.runtime, cxxBridge.jsCallInvoker);
+    grpcrn::GRPCRTNModule::install(*(jsi::Runtime *)cxxBridge.runtime, cxxBridge.jsCallInvoker);
 }
 
 @end
