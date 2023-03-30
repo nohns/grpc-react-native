@@ -12,7 +12,7 @@
   "dependencies": {
     "google-protobuf": "^3.19.0",
     "grpc-react-native": "../",
-    "react": "18.1.0",
+    "react": "18.2.0",
     "react-native": "0.70.6"
   },
   "devDependencies": {
