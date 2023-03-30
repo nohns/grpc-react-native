@@ -19,12 +19,12 @@ Channel::Channel(jsi::Runtime& runtime, jsi::Value* args, size_t count) {
    
     // Make sure there are 2-3 arguments
     if (count >= 2 && count > 3) {
-        jsi::detail::throwJSError(runtime, "Channel: Please specify the correct amount of arguments");
+        throw jsi::JSError(runtime, "Channel: Please specify the correct amount of arguments");
         return;
     }
     
     if (!args[0].isString()) {
-        jsi::detail::throwJSError(runtime, "Channel: Please specify the correct amount of arguments");
+        throw jsi::JSError(runtime, "Channel: Please specify the correct amount of arguments");
         return;
     }
     

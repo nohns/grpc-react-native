@@ -19,20 +19,20 @@ Client::Client(std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory, 
     
     // Make sure sufficient arguments are given
     if (count < 2 || count > 3) {
-        jsi::detail::throwJSError(runtime, "gRPC Client: two or three arguments needed when creating client stub.");
+        throw jsi::JSError(runtime, "gRPC Client: two or three arguments needed when creating client stub.");
         return;
     }
     
     // Parse target for this client. The web location where the gRPC service is located
     if (!args[0].isString()) {
-        jsi::detail::throwJSError(runtime, "gRPC Client: expected string as first argument.");
+        throw jsi::JSError(runtime, "gRPC Client: expected string as first argument.");
         return;
     }
     target_ = args[0].asString(runtime).utf8(runtime);
     
     // Validate channel credentials is a instance of ChannelCredentials host object
     if (!args[1].isObject() || !args[1].asObject(runtime).isHostObject<ChannelCredentials>(runtime)) {
-        jsi::detail::throwJSError(runtime, "gRPC Client: expected channel credentials as second argument.");
+        throw jsi::JSError(runtime, "gRPC Client: expected channel credentials as second argument.");
         return;
     }
     
@@ -41,7 +41,7 @@ Client::Client(std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory, 
     if (!isGeneric_) {
         // Validate third paramter as a file descriptor proto.
         if (!args[2].isObject() || !args[2].asObject(runtime).isArrayBuffer(runtime)) {
-            jsi::detail::throwJSError(runtime, "gRPC Client: expected array buffer as optional third argument.");
+            throw jsi::JSError(runtime, "gRPC Client: expected array buffer as optional third argument.");
             return;
         }
         
@@ -74,19 +74,18 @@ jsi::Value Client::get(jsi::Runtime& runtime, const jsi::PropNameID& name) {
         return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, mNameUnary), 2, [this](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count) -> jsi::Value {
             
             if (count != 2) {
-                jsi::detail::throwJSError(runtime, "gRPC Client: two arguments need when making unary call.");
-                return jsi::Value::undefined();
+                throw jsi::JSError(runtime,  "gRPC Client: two arguments need when making unary call.");
             }
             
             // Parse method path
             if (!args[0].isString()) {
-                jsi::detail::throwJSError(runtime, "gRPC Client: expected string as first argument.");
+                throw jsi::JSError(runtime, "gRPC Client: expected string as first argument.");
             }
             std::string methodPath = args[0].getString(runtime).utf8(runtime);
         
             // Parse data object
             if (!args[1].isObject()) {
-                jsi::detail::throwJSError(runtime, "gRPC Client: expected object as last argument.");
+                throw jsi::JSError(runtime, "gRPC Client: expected object as last argument.");
             }
             jsi::Object dataObj = args[1].getObject(runtime);
             
