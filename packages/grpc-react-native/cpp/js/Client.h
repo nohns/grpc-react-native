@@ -60,8 +60,8 @@ private:
     
     // File descriptor containing information about the service which the client is consuming
     const FileDescriptor* fileDescriptor_;
-    std::unordered_map<string, google::protobuf::Message*> reqProtos_;
-    std::unordered_map<string, google::protobuf::Message*> resProtos_;
+    std::unordered_map<std::string, google::protobuf::Message*> reqProtos_;
+    std::unordered_map<std::string, google::protobuf::Message*> resProtos_;
     
     void prepareRpcs();
 };
