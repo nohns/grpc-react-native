@@ -131,24 +131,24 @@ private:
 /// ArrayValue is intended to translate protobuf messages to js object.
 class ArrayValue: public Value {
 public:
-    ArrayValue(jsi::Array& val);
+    ArrayValue();
     
     // Base Field virtual methods
     jsi::Value get(jsi::Runtime& runtime) override;
     void set(jsi::Runtime& runtime, const jsi::Value& val) override;
     
     // Type specific methods
-    jsi::Array& getArray();
+    std::vector<Value>& getArray();
+    void push(Value& val);
 private:
     ValueType type_ = ValueType::ARRAY;
-    jsi::Array& val_;
+    std::vector<Value> vals_;
 };
 
-class IncompatibleSetValueException : public std::exception {
+class IncompatibleSetValueException : public jsi::JSError {
 public:
-    virtual const char* type() {
-        return "JavaScript value type is incompatible with protobuf type";
-    }
+    IncompatibleSetValueException(jsi::Runtime& runtime):
+        jsi::JSError(runtime, "JavaScript value type is incompatible with protobuf type") {}
 };
 
 }}}

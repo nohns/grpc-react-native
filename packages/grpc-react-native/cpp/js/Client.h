@@ -34,11 +34,11 @@ public:
     
     // Implement host object methods for communicating with JS.
     /// Defines all methods available on the generic gRPC client exposed in JS
-    jsi::Value get(jsi::Runtime&, const jsi::PropNameID& name);
+    jsi::Value get(jsi::Runtime&, const jsi::PropNameID& name) override;
     ///  Not used. There is no properties to set on the client from JS. Use the methods exposed by Client::get
-    void set(jsi::Runtime&, const jsi::PropNameID& name, const jsi::Value& value);
+    void set(jsi::Runtime&, const jsi::PropNameID& name, const jsi::Value& value) override;
     /// Get all methods names exposed to JS.
-    std::vector<jsi::PropNameID> getPropertyNames(jsi::Runtime& rt);
+    std::vector<jsi::PropNameID> getPropertyNames(jsi::Runtime& rt) override;
     
     // gRPC client specific methods
     jsi::Value makeUnary(jsi::Runtime& runtime, std::string methodName, jsi::Object& data);
@@ -53,16 +53,15 @@ private:
     std::shared_ptr<grpc::Channel> chan_;
     
     // Generic gRPC stub, to make the calls to the external service
-    std::unique_ptr<grpc::TemplatedGenericStub<google::protobuf::Message, google::protobuf::Message>> generic_stub_;
+    std::unique_ptr<grpc::TemplatedGenericStub<grpc::ByteBuffer, grpc::ByteBuffer>> generic_stub_;
     
     // Provides reference to the shared promise factory used when creating async js promises. Uses concurrent threading
     std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory_;
     
-    // Pool of protobuf descriptors used by the service which the client is consuming
-    google::protobuf::DescriptorPool descPool_;
+    // File descriptor containing information about the service which the client is consuming
     const FileDescriptor* fileDescriptor_;
-    std::map<string, google::protobuf::Message*> reqProtos_;
-    std::map<string, google::protobuf::Message*> resProtos_;
+    std::unordered_map<string, google::protobuf::Message*> reqProtos_;
+    std::unordered_map<string, google::protobuf::Message*> resProtos_;
     
     void prepareRpcs();
 };

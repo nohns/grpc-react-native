@@ -30,6 +30,8 @@ using namespace google::protobuf;
 
 class JSI_EXPORT Message: public jsi::HostObject {
 public:
+    Message();
+    ~Message();
     
     // Proto/JSI object initialization methods
     /// Protobuf  initializer for message host object. This is used to communicate with js
@@ -52,7 +54,6 @@ private:
     
     // @TODO: Is a map here necessary?
     std::unordered_map<int, Field*> fields_;
-    std::unordered_map<int, std::vector<Field*>> repeatedFields_;
     
     // MARK: - Static attributes
 

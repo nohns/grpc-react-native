@@ -27,7 +27,7 @@ jsi::Value StringValue::get(jsi::Runtime& runtime) {
 
 void StringValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
     if (!val.isString()) {
-        throw IncompatibleSetValueException();
+        throw IncompatibleSetValueException(runtime);
     }
     
     val_ = val.getString(runtime).utf8(runtime);
@@ -54,7 +54,7 @@ jsi::Value NumberValue::get(jsi::Runtime& runtime) {
 void NumberValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
     
     if (!val.isNumber()) {
-        throw IncompatibleSetValueException();
+        throw IncompatibleSetValueException(runtime);
     }
     
     doubleVal_ = val.getNumber();
@@ -75,7 +75,7 @@ jsi::Value BooleanValue::get(jsi::Runtime& runtime) {
 
 void BooleanValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
     if (!val.isBool()) {
-        throw IncompatibleSetValueException();
+        throw IncompatibleSetValueException(runtime);
     }
     
     val_ = val.getBool();
@@ -96,7 +96,7 @@ jsi::Value ArrayBufferValue::get(jsi::Runtime& runtime) {
 
 void ArrayBufferValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
     if (!val.isObject() || !val.asObject(runtime).isArrayBuffer(runtime)) {
-        throw IncompatibleValueSetValueException();
+        throw IncompatibleSetValueException(runtime);
     }
     
     // Get buffer from arguments
@@ -123,7 +123,7 @@ jsi::Value ObjectValue::get(jsi::Runtime& runtime) {
 
 void ObjectValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
     if (!val.isObject()) {
-        throw IncompatibleSetValueException();
+        throw IncompatibleSetValueException(runtime);
     }
     
     val_ = val.getObject(runtime);
@@ -134,22 +134,28 @@ jsi::Object& ObjectValue::getObject() {
 }
 
 
-ArrayValue::ArrayValue(jsi::Array& val): Value(), val_(val) {}
+ArrayValue::ArrayValue(): Value() {}
 
 jsi::Value ArrayValue::get(jsi::Runtime& runtime) {
-    return jsi::Value(std::move(val_));
+    auto jsArray = jsi::Array(runtime, vals_.size());
+    for(int i = 0; i < vals_.size(); i++) {
+        jsArray.setValueAtIndex(runtime, i, vals_[i].get(runtime));
+    }
+    
+    return jsi::Value(std::move(jsArray));
 }
 
 void ArrayValue::set(jsi::Runtime &runtime, const jsi::Value& val) {
-    if (!val.isObject() || !val.getObject(runtime).isArray(runtime)) {
-        throw IncompatibleSetValueException();
-    }
-    
-    val_ = val.getObject(runtime).asArray(runtime);
+    // Unimplemented
+    throw IncompatibleSetValueException(runtime);
 }
 
-jsi::Array& ArrayValue::getArray() {
-    return val_;
+std::vector<Value>& ArrayValue::getArray() {
+    return vals_;
+}
+
+void ArrayValue::push(Value& val) {
+    vals_.push_back(std::move(val));
 }
 
 

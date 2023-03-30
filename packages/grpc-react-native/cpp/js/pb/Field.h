@@ -45,7 +45,8 @@ class StringField: public Field {
 public:
     StringField(int index, std::string camelCaseName, std::string val);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
 private:
     StringValue val_;
@@ -63,7 +64,8 @@ public:
     NumberField(int index, std::string camelCaseName, uint32_t val);
     NumberField(int index, std::string camelCaseName, uint64_t val);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
 private:
     NumberValue val_;
@@ -76,7 +78,8 @@ class BooleanField: public Field {
 public:
     BooleanField(int index, std::string camelCaseName, bool val);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
 private:
     BooleanValue val_;
@@ -89,7 +92,8 @@ class ArrayBufferField: public Field {
 public:
     ArrayBufferField(int index, std::string camelCaseName, uint8_t* buf, size_t size);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
 private:
     ArrayBufferValue val_;
@@ -100,7 +104,8 @@ class ObjectField: public Field {
 public:
     ObjectField(int index, std::string camelCaseName, jsi::Object& val);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
 private:
     ObjectValue val_;
@@ -108,31 +113,28 @@ private:
 
 class ArrayField: public Field {
 public:
-    ArrayField(int index, std::string camelCaseName, jsi::Array& val);
+    ArrayField(int index, std::string camelCaseName);
     
-    // Base Field virtual methods
+    // MARK: - Base Field virtual methods
+    
     Value getValue() override;
+    
+    // MARK: - Array specific methods
+    
+    void push(Value);
+    
 private:
     ArrayValue val_;
 };
 
-class IncompatibleFieldSetValueException : public std::exception {
+class IncompatibleFieldSetValueException : public jsi::JSError {
 public:
     // Default constructor
-    IncompatibleFieldSetValueException() : formattedError_(nullptr) {}
+    IncompatibleFieldSetValueException(jsi::Runtime& runtime) : jsi::JSError(runtime, "JavaScript type given to a setter, is not compatible with the protobuf field type") {}
     // Constructor with field name and expected jsi type
-    IncompatibleFieldSetValueException(std::string field, std::string jsType, std::string protobufType) {
-        formattedError_ = grpcrn::utils::Strings::format("JavaScript type %s for field '%s', is not compatible with the protobuf field type %s", jsType, field, protobufType).c_str();
+    IncompatibleFieldSetValueException(jsi::Runtime& runtime, std::string field, std::string jsType, std::string protobufType): jsi::JSError(runtime, grpcrn::utils::Strings::format("JavaScript type %s for field '%s', is not compatible with the protobuf field type %s", jsType, field, protobufType)) {
+        
     }
-    
-    virtual const char* type() {
-        if (formattedError_ != nullptr) {
-            return formattedError_;
-        }
-        return "JavaScript type given to a setter, is not compatible with the protobuf field type";
-    }
-private:
-    const char* formattedError_;
 };
 
 }}}

@@ -78,10 +78,14 @@ Value ObjectField::getValue() {
 
 
 /// Message field with a JS Array type
-ArrayField::ArrayField(int index, std::string camelCaseName, jsi::Array& val): Field(index, camelCaseName), val_(val) {}
+ArrayField::ArrayField(int index, std::string camelCaseName): Field(index, camelCaseName) {}
 
 Value ArrayField::getValue() {
     return val_;
+}
+
+void ArrayField::push(Value val) {
+    val_.push(val);
 }
 
 }}}

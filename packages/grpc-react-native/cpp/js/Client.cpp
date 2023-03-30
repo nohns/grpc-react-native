@@ -52,7 +52,7 @@ Client::Client(std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory, 
         // Add descriptors to pool from the proto file, in which the service methods for this client is declared
         FileDescriptorProto fdp;
         fdp.ParseFromArray(fdpBuf, (int)fdpBufSize);
-        fileDescriptor_ = descPool_.BuildFile(fdp);
+        fileDescriptor_ = DescriptorPool().BuildFile(fdp);
     }
     
     // Setup channel to use for this communication
@@ -61,7 +61,7 @@ Client::Client(std::shared_ptr<grpcrn::js::lib::PromiseFactory> promiseFactory, 
     chan_ = grpc::CreateChannel(target_, chanCredsHo->getCredentials());
     
     // Create generic stub
-    generic_stub_.reset(new grpc::TemplatedGenericStub<google::protobuf::Message, google::protobuf::Message>(chan_));
+    generic_stub_.reset(new grpc::TemplatedGenericStub<grpc::ByteBuffer, grpc::ByteBuffer>(chan_));
 }
 
 
@@ -115,7 +115,8 @@ void Client::set(jsi::Runtime&, const jsi::PropNameID& name, const jsi::Value& v
 // Returns all methods exposed by message. Depends on which protobuf message it represents, which produced the accessible fields.
 std::vector<jsi::PropNameID> Client::getPropertyNames(jsi::Runtime& runtime) {
     
-    std::vector<jsi::PropNameID> props{jsi::PropNameID::forUtf8(runtime, "makeUnary")};
+    std::vector<jsi::PropNameID> props;
+    props.push_back(jsi::PropNameID::forUtf8(runtime, "makeUnary"));
     
     // TODO: return all dynamic methods
     return props;
@@ -137,14 +138,12 @@ jsi::Value Client::makeUnary(jsi::Runtime& runtime, std::string methodPath, jsi:
     auto methodDesc = servDesc->FindMethodByName(methodName);
     auto inMsgDesc = methodDesc->input_type();
     auto outMsgDesc = methodDesc->output_type();
-    auto subMsg = descPool_.FindMessageTypeByName("");
     
     // Create an empty Message object that will hold the result of deserializing
     // a byte array for the proto definition:
     google::protobuf::DynamicMessageFactory factory;
     const google::protobuf::Message* prototypeInMsg = factory.GetPrototype(inMsgDesc); // prototype_msg is immutable
     const google::protobuf::Message* prototypeOutMsg = factory.GetPrototype(outMsgDesc); // prototype_msg is immutable
-    const google::protobuf::Message* prototypeSubMsg =
     if (prototypeInMsg == NULL || prototypeOutMsg == NULL) {
         // @TODO: Handle error
         std::cerr << "Cannot create prototype message from message descriptor";
@@ -167,14 +166,51 @@ jsi::Value Client::makeUnary(jsi::Runtime& runtime, std::string methodPath, jsi:
     grpc::CompletionQueue cq;
     grpc::Status status;
     grpc::ClientContext clientCtx;
+    grpc::StubOptions stubOptions;
     void* got_tag;
     bool ok = false;
     
     // Prepare gRPC call
-    std::unique_ptr<grpc::ClientAsyncReaderWriter<google::protobuf::Message, google::protobuf::Message>> call = generic_stub_->PrepareCall(&clientCtx, methodPath, &cq);
+    /*std::unique_ptr<grpc::ClientAsyncReaderWriter<grpc::ByteBuffer, grpc::ByteBuffer>> call = generic_stub_->PrepareCall(&clientCtx, methodPath, &cq);*/
+    
+    grpc::Slice reqSlices[] = {grpc::Slice(req->SerializeAsString())};
+    grpc::ByteBuffer reqBuffer(reqSlices, 1);
+    grpc::ByteBuffer replyBuffer;
+    
+    generic_stub_->UnaryCall(&clientCtx, methodPath, stubOptions, &reqBuffer, &replyBuffer, [this, &clientCtx](grpc::Status status) -> void {
+        if (!status.ok()) {
+            // Check error state of channel
+            grpc_connectivity_state channel_state = this->chan_->GetState(false);
+            switch (channel_state) {
+                case grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN:
+                case grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE:
+                    // Error happend when establishing channel
+                    throw ChannelConnectionFailedException();
+                    
+                case grpc_connectivity_state::GRPC_CHANNEL_CONNECTING:
+                    // Deadline exceeded
+                    if (clientCtx.deadline() < std::chrono::system_clock::now()) {
+                        throw DeadlineExceededException();
+                    }
+                    
+                default:
+                    std::cout << "Unknown error occured while doing gRPC call. Channel state " << channel_state << std::endl;
+                    std::cout << "error = " << status.error_code() << ": " << status.error_message() << " (" << status.error_details() << ")" << std::endl;
+                    // Unkown error happend while connecting
+                    throw UnknownException();
+            }
+            
+            return;
+        }
+        
+    });
+    
+    grpc::Slice replySlice;
+    replyBuffer.DumpToSingleSlice(&replySlice);
+    reply->ParseFromArray(replySlice.begin(), (int)replySlice.size());
     
     // Start grpc call
-    call->StartCall(tag(1));
+    /*call->StartCall(tag(1));
     cq.Next(&got_tag, &ok);
     if (!ok || got_tag != tag(1)) {
         
@@ -225,15 +261,15 @@ jsi::Value Client::makeUnary(jsi::Runtime& runtime, std::string methodPath, jsi:
         
         // Throw error
         throw NoStatusSentException();
-    }
+    }*/
     
     // Parse reply proto into jsi host object message format
-    std::shared_ptr<grpcrn::js::pb::Message> msgHo;
+    std::shared_ptr<grpcrn::js::pb::Message> msgHo = std::make_shared<grpcrn::js::pb::Message>();
     msgHo->parseFromProto(runtime, *reply);
     
     // Return js object value
-    jsi::Object::createFromHostObject(runtime, msgHo);
-    return jsi::Value(msgHo);
+    auto msgJs = jsi::Object::createFromHostObject(runtime, msgHo);
+    return jsi::Value(std::move(msgJs));
 }
 
 // Not in use just yet

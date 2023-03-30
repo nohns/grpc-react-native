@@ -21,11 +21,17 @@ namespace pb {
 #define PARSED_FIELD_TYPE_CASE_BODY_SINGULAR(JS_TYPE, PASCALCASE)          \
     fields_[pField->index()] = new JS_TYPE##Field(pField->index(), pField->camelcase_name(), refl->Get##PASCALCASE(msg, pField));
 #define PARSED_FIELD_TYPE_CASE_BODY_REPEATED(JS_TYPE, PASCALCASE, INDEXVAR)   \
-    repeatedFields_[pField->index()].push_back(new JS_TYPE##Field(pField->index(), pField->camelcase_name(), refl->GetRepeated##PASCALCASE(msg, pField, INDEXVAR)));
+    repeatedField->push(JS_TYPE##Value(refl->GetRepeated##PASCALCASE(msg, pField, INDEXVAR)));
 #define PARSED_FIELD_TYPE_CASE_SINGULAR(UPPERCASE, JS_TYPE, PASCALCASE)    \
     PARSE_FIELD_TYPE_CASE_BASE(UPPERCASE, JS_TYPE, PARSED_FIELD_TYPE_CASE_BODY_SINGULAR(JS_TYPE, PASCALCASE))
 #define PARSED_FIELD_TYPE_CASE_REPEATED(UPPERCASE, JS_TYPE, PASCALCASE, INDEXVAR) \
     PARSE_FIELD_TYPE_CASE_BASE(UPPERCASE, JS_TYPE, PARSED_FIELD_TYPE_CASE_BODY_REPEATED(JS_TYPE, PASCALCASE, INDEXVAR))
+
+Message::~Message() {
+    for (auto field_ptr = fields_.begin(); field_ptr != fields_.end(); field_ptr++) {
+        delete field_ptr->second;
+    }
+}
 
 void Message::parseFromProto(jsi::Runtime& runtime, const google::protobuf::Message& msg) {
     
@@ -40,6 +46,7 @@ void Message::parseFromProto(jsi::Runtime& runtime, const google::protobuf::Mess
         
         // If is repeated field, then loop over each value an add to the the repeated field map
         if (pField->is_repeated()) {
+            ArrayField* repeatedField = new ArrayField(pField->index(), pField->camelcase_name());
             int fieldLen = refl->FieldSize(msg, pField);
             for(int i = 0; i < fieldLen; i++) {
                 switch (pField->type()) {
@@ -66,13 +73,13 @@ void Message::parseFromProto(jsi::Runtime& runtime, const google::protobuf::Mess
                         // JS type array buffer...
                         auto str = refl->GetRepeatedString(msg, pField, i);
                         uint8_t* buf = reinterpret_cast<uint8_t*>(&str[0]);
-                        repeatedFields_[pField->index()].push_back(new ArrayBufferField(pField->index(), pField->camelcase_name(), buf, (size_t)str.length()));
+                        repeatedField->push(ArrayBufferValue(buf, (size_t)str.length()));
                         break;
                     }
                     case FieldDescriptor::Type::TYPE_ENUM: {
                         // Simply use a string value when dealing with enums
                         const EnumValueDescriptor* enumVal = refl->GetRepeatedEnum(msg, pField, i);
-                        repeatedFields_[pField->index()].push_back(new StringField(pField->index(), pField->camelcase_name(), enumVal->name()));
+                        repeatedField->push(StringValue(enumVal->name()));
                         break;
                     }
                     case FieldDescriptor::Type::TYPE_MESSAGE: {
@@ -85,7 +92,7 @@ void Message::parseFromProto(jsi::Runtime& runtime, const google::protobuf::Mess
                         
                         // Create js object value from representation
                         jsi::Object msgObj =  jsi::Object::createFromHostObject(runtime, pbMsg);
-                        repeatedFields_[pField->index()].push_back(new ObjectField(pField->index(), pField->camelcase_name(), msgObj));
+                        repeatedField->push(ObjectValue(msgObj));
                         break;
                     }
                     default: {
@@ -94,10 +101,11 @@ void Message::parseFromProto(jsi::Runtime& runtime, const google::protobuf::Mess
                     }
                         
                 }
-                auto s = refl->GetRepeatedString(msg, pField, i);
                 
             }
             
+            // Add index to map
+            fields_[pField->index()] = std::move(repeatedField);
             continue;
         }
         
@@ -185,6 +193,11 @@ std::string Message::fieldTypeAsString(FieldDescriptor::Type type) {
     return fieldTypeMap_[type];
 }
 
+
+/**
+ * Static: Merge a JS Object (given in jsi::Object format) into a protobuf message
+ * Useful when filling out request data in unary calls.
+ */
 void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Message* protoMsg, jsi::Object& obj) {
     
     auto refl = protoMsg->GetReflection();
@@ -203,7 +216,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
             
             if (pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "string", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "string", protobufType);
             }
             
             auto str = jsVal.getString(runtime).utf8(runtime);
@@ -218,7 +231,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
                     break;
                 }
                 default: {
-                    throw IncompatibleFieldSetValueException(pField->camelcase_name(), "string", Message::fieldTypeAsString(pField->type()));
+                    throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "string", Message::fieldTypeAsString(pField->type()));
                     break;
                 }
             }
@@ -226,7 +239,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
         else if (jsVal.isNumber()) {
             if (pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "number", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "number", protobufType);
             }
             
             double num = jsVal.getNumber();
@@ -281,7 +294,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
                     break;
                 }
                 default: {
-                    throw IncompatibleFieldSetValueException(pField->camelcase_name(), "number", Message::fieldTypeAsString(pField->type()));
+                    throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "number", Message::fieldTypeAsString(pField->type()));
                     break;
                 }
             }
@@ -289,7 +302,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
         else if (jsVal.isBool()) {
             if (pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "boolean", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "boolean", protobufType);
             }
             refl->SetBool(protoMsg, pField, jsVal.getBool());
         }
@@ -298,10 +311,10 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
     
             if (pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "ArrayBuffer", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "ArrayBuffer", protobufType);
             }
             if (pField->type() != FieldDescriptor::Type::TYPE_BYTES) {
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "ArrayBuffer", Message::fieldTypeAsString(pField->type()));
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "ArrayBuffer", Message::fieldTypeAsString(pField->type()));
             }
             
             auto arrBuf = jsVal.getObject(runtime).getArrayBuffer(runtime);
@@ -313,7 +326,7 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
             
             if (!pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("non-repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "array", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "array", protobufType);
             }
             auto arr = jsVal.getObject(runtime).getArray(runtime);
             
@@ -328,14 +341,8 @@ void Message::mergeObjectIntoProto(jsi::Runtime& runtime, google::protobuf::Mess
             
             if (!pField->is_repeated()) {
                 auto protobufType = grpcrn::utils::Strings::format("non-repeated %s", Message::fieldTypeAsString(pField->type()));
-                throw IncompatibleFieldSetValueException(pField->camelcase_name(), "object", protobufType);
+                throw IncompatibleFieldSetValueException(runtime, pField->camelcase_name(), "object", protobufType);
             }
-            
-            google::protobuf::Message msg;
-            
-            refl->SetAllocatedMessage(protoMsg, &msg, pField);
-                
-            
         }
     }
 }
@@ -344,59 +351,27 @@ jsi::Value Message::get(jsi::Runtime& runtime, const jsi::PropNameID& propertyNa
     std::string pName = propertyName.utf8(runtime);
     
     for(auto it = fields_.begin(); it != fields_.end(); it++) {
-        Field* f = it->second;
+        Field* field = it->second;
         
-        std::string fieldName = f->getName();
+        std::string fieldName = field->getName();
         if (pName == fieldName) {
-            return f->getValue(runtime);
+            return field->getValue().get(runtime);
         }
-        
-        // Check if a getter is requested. I.e "getUsername" or "getPassword"
-        std::string getterName = "get" + name;
-         if (mName == getterName) {
-         return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, getterName), 0, [f](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count) -> jsi::Value {
-         
-         // Return the JS value of the field
-         return f->getValue(runtime);
-         });;
-         }
-         
-         // Check if a setter is requested. I.e "setUsername" or "setPassword"
-         std::string setterName = "set" + name;
-         if (mName == setterName) {
-         return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, setterName), 1, [f](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count) -> jsi::Value {
-         
-         // Set the JS value for the field.
-         f->setValue(runtime, &args[0]);
-         return jsi::Value::undefined();
-         });;
-         }
-         
-         // Check if a "has" method is requested. I.e "hasUsername" or sat "hasPassword"
-         std::string hasMethodName = "has" + name;
-         if (mName == hasMethodName) {
-         return jsi::Function::createFromHostFunction(runtime, jsi::PropNameID::forAscii(runtime, setterName), 1, [f](jsi::Runtime& runtime, const jsi::Value& thisValue, const jsi::Value* args, size_t count) -> jsi::Value {
-         
-         // Get the "has field" state.
-         return jsi::Value(f->has());
-         });;
-         }*/
     }
-    
     
     return jsi::Value::undefined();
 }
 
-void Message::set(jsi::Runtime&, const jsi::PropNameID& name, const jsi::Value& value) {
+void Message::set(jsi::Runtime& runtime, const jsi::PropNameID& propertyName, const jsi::Value& value) {
     std::string pName = propertyName.utf8(runtime);
     
     for(auto it = fields_.begin(); it != fields_.end(); it++) {
-        Field* f = it->second;
+        Field* field = it->second;
         
-        std::string fieldName = f->getName();
+        std::string fieldName = field->getName();
         if (pName == fieldName) {
-            f->setHas(!value.isUndefined() && !value.isNull());
-            f->getValue().set(runtime, value);
+            field->setHas(!value.isUndefined() && !value.isNull());
+            field->getValue().set(runtime, value);
             break;
         }
     }
@@ -408,19 +383,8 @@ std::vector<jsi::PropNameID> Message::getPropertyNames(jsi::Runtime& runtime) {
     
     // Loop through all fields to add every method for each field to the final list of properties...
     for(auto it = fields_.begin(); it != fields_.end(); it++) {
-        Field* f = it->second;
-        
-        // Convert name to PascalCase of field
-        std::string name = f->getName();
-        name[0] = ascii_toupper(name[0]);
-        
-        // Add all method names to property name list
-        std::string getterName = "get" + name;
-        std::string setterName = "set" + name;
-        std::string hasMethodName = "has" + name;
-        props.push_back(jsi::PropNameID::forUtf8(runtime, getterName));
-        props.push_back(jsi::PropNameID::forUtf8(runtime, setterName));
-        props.push_back(jsi::PropNameID::forUtf8(runtime, hasMethodName));
+        Field* field = it->second;
+        props.push_back(jsi::PropNameID::forUtf8(runtime, field->getName()));
     }
     
     return props;
